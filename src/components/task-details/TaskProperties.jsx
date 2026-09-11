@@ -43,6 +43,7 @@ function StatusPicker({ value, onValueChange }) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
+        data-task-details-popup
         align="end"
         sideOffset={6}
         className="w-44 min-w-44 rounded-xl p-1.5"
@@ -90,6 +91,7 @@ export default function TaskProperties({ taskId, draft, onChange }) {
         <DatePicker
           taskId={taskId}
           dueDate={draft.due_date}
+          withinTaskDetails
           onChange={(_taskId, dueDate) => onChange("due_date", dueDate)}
         />
       </PropertyRow>
@@ -98,6 +100,7 @@ export default function TaskProperties({ taskId, draft, onChange }) {
         <FlagPicker
           taskId={taskId}
           taskPriority={draft.priority}
+          withinTaskDetails
           showLabel
           onChange={(priority) => onChange("priority", priority)}
         />
