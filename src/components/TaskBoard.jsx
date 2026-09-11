@@ -53,8 +53,7 @@ function getTaskBreadcrumb(task, projects, justTaskBoards) {
 }
 
 export default function TaskBoard({ defaultTaskPriority = 4 }) {
-  const [boardScroll, setBoardScroll] = useState({ left: 0, max: 0 });
-  const boardScrollRef = useRef(null);
+  const [detailsAnchor, setDetailsAnchor] = useState(null);
   const boardGridRef = useRef(null);
 
   const tasks = useTaskStore((state) => state.tasks);
@@ -78,7 +77,8 @@ export default function TaskBoard({ defaultTaskPriority = 4 }) {
     (task) => Number(task.id) === Number(selectedTaskId),
   );
 
-  function setSelectedTaskId(taskId) {
+  function setSelectedTaskId(taskId, anchorElement = null) {
+    setDetailsAnchor(taskId == null ? null : anchorElement);
     setBoardState({
       ...boardState,
       focusedTaskId: taskId ?? null,
@@ -208,26 +208,6 @@ export default function TaskBoard({ defaultTaskPriority = 4 }) {
     }
   }
 
-  const boardGridClassName = selectedTask
-    ? "mt-6 grid w-full min-w-[1050px] grid-cols-[repeat(3,minmax(350px,1fr))] max-[1428px]:min-w-[calc(100%+416px)] max-[1428px]:pr-[416px]"
-    : "mt-6 grid w-full min-w-[1050px] grid-cols-[repeat(3,minmax(350px,1fr))]";
-
-  const boardScrollClassName = selectedTask
-    ? "min-w-0 flex-1 overflow-x-auto max-[1428px]:h-full max-[1428px]:overflow-y-auto max-[1428px]:pb-14"
-    : "min-w-0 flex-1 overflow-x-auto";
-
-  const boardContainerClassName = selectedTask
-    ? "relative flex w-full overflow-hidden max-[1428px]:h-[calc(100vh-6.5rem)] min-[1429px]:min-h-[calc(100vh-3.5rem)]"
-    : "flex min-h-[calc(100vh-3.5rem)] w-full overflow-hidden";
-
-  function handleBoardScroll(event) {
-    const scroller = event.currentTarget;
-    setBoardScroll((currentScroll) => ({
-      ...currentScroll,
-      left: scroller.scrollLeft,
-    }));
-  }
-
   function restrictToBoardColumns({ transform, draggingNodeRect }) {
     const boardRect = boardGridRef.current?.getBoundingClientRect();
 
@@ -251,13 +231,12 @@ export default function TaskBoard({ defaultTaskPriority = 4 }) {
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
     >
-      <div className={boardContainerClassName}>
-        <div
-          ref={boardScrollRef}
-          className={boardScrollClassName}
-          onScroll={handleBoardScroll}
-        >
-          <div ref={boardGridRef} className={boardGridClassName}>
+      <div className="flex min-h-[calc(100vh-3.5rem)] w-full overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          <div
+            ref={boardGridRef}
+            className="mt-6 grid w-full min-w-[1050px] grid-cols-[repeat(3,minmax(350px,1fr))]"
+          >
             {columns.map((column) => {
               const columnTasks = getTasksForColumn(column.status);
 
@@ -300,6 +279,7 @@ export default function TaskBoard({ defaultTaskPriority = 4 }) {
         {selectedTask && (
           <TaskDetailsPanel
             task={selectedTask}
+            anchorElement={detailsAnchor}
             breadcrumb={getTaskBreadcrumb(
               selectedTask,
               projects,

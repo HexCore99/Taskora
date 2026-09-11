@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import TaskDescription from "./TaskDescription";
 import TaskDetailsActions from "./TaskDetailsActions";
 import TaskDetailsHeader from "./TaskDetailsHeader";
@@ -27,11 +27,14 @@ function createDraft(task) {
 export default function TaskDetailsPanel({
   task,
   breadcrumb,
+  anchorElement,
   onClose,
 }) {
+  const panelRef = useRef(null);
   const [draft, setDraft] = useState(() => createDraft(task));
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [position, setPosition] = useState(null);
 
   const saveTaskDetails = useTaskStore((state) => state.saveTaskDetails);
   const moveToTrash = useTaskStore((state) => state.moveToTrash);
@@ -52,6 +55,75 @@ export default function TaskDetailsPanel({
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [onClose]);
+
+  useLayoutEffect(() => {
+    function updatePosition() {
+      const panel = panelRef.current;
+      if (!panel) return;
+
+      const margin = 8;
+      const gap = 12;
+      const panelRect = panel.getBoundingClientRect();
+      const anchorRect = anchorElement?.isConnected
+        ? anchorElement.getBoundingClientRect()
+        : null;
+
+      if (!anchorRect) {
+        setPosition({
+          left: Math.max(margin, window.innerWidth - panelRect.width - margin),
+          top: margin,
+        });
+        return;
+      }
+
+      const right = anchorRect.right + gap;
+      const left = anchorRect.left - panelRect.width - gap;
+      const preferredLeft =
+        right + panelRect.width <= window.innerWidth - margin ? right : left;
+
+      setPosition({
+        left: Math.min(
+          Math.max(margin, preferredLeft),
+          window.innerWidth - panelRect.width - margin,
+        ),
+        top: Math.min(
+          Math.max(margin, anchorRect.top),
+          window.innerHeight - panelRect.height - margin,
+        ),
+      });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [anchorElement, task.id]);
+
+  useEffect(() => {
+    function handleOutsidePointerDown(event) {
+      const isPanelPopup =
+        event.target instanceof Element &&
+        event.target.closest("[data-task-details-popup]");
+
+      if (
+        panelRef.current?.contains(event.target) ||
+        anchorElement?.contains(event.target) ||
+        isPanelPopup
+      ) {
+        return;
+      }
+
+      onClose();
+    }
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () =>
+      document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [anchorElement, onClose]);
 
   function updateDraft(field, value) {
     setDraft((currentDraft) => ({
@@ -111,10 +183,11 @@ export default function TaskDetailsPanel({
 
   return (
     <aside
+      ref={panelRef}
       role="dialog"
-      aria-modal="true"
       aria-label={"Task details for " + task.name}
-      className="fixed right-2 top-16 bottom-2 z-50 flex w-100 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl min-[1429px]:static min-[1429px]:z-auto min-[1429px]:h-[calc(100vh-3.5rem)] min-[1429px]:max-w-[42vw] min-[1429px]:shrink-0 min-[1429px]:rounded-none min-[1429px]:border-y-0 min-[1429px]:border-r-0 min-[1429px]:shadow-none"
+      style={position ?? { left: 8, top: 8, visibility: "hidden" }}
+      className="fixed z-50 flex h-[min(44rem,calc(100vh-1rem))] w-100 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
     >
       <TaskDetailsHeader
         name={draft.name}

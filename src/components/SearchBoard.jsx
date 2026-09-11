@@ -56,6 +56,17 @@ function getSearchText(task) {
 export default function SearchBoard() {
   const [query, setQuery] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [detailsAnchor, setDetailsAnchor] = useState(null);
+
+  function openTaskDetails(taskId, anchorElement) {
+    setSelectedTaskId(taskId);
+    setDetailsAnchor(anchorElement);
+  }
+
+  function closeTaskDetails() {
+    setSelectedTaskId(null);
+    setDetailsAnchor(null);
+  }
 
   const tasks = useTaskStore((state) => state.tasks);
   const projects = useProjectStore((state) => state.projects);
@@ -144,7 +155,9 @@ export default function SearchBoard() {
                       key={task.id}
                       type="button"
                       className="w-full rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-orange-300 hover:bg-orange-50/50 focus-visible:ring-2 focus-visible:ring-orange-400 dark:hover:border-orange-800 dark:hover:bg-orange-950/20"
-                      onClick={() => setSelectedTaskId(task.id)}
+                      onClick={(event) =>
+                        openTaskDetails(task.id, event.currentTarget)
+                      }
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
@@ -185,12 +198,13 @@ export default function SearchBoard() {
       {selectedTask && (
         <TaskDetailsPanel
           task={selectedTask}
+          anchorElement={detailsAnchor}
           breadcrumb={getTaskBreadcrumb(
             selectedTask,
             projects,
             justTaskBoards,
           )}
-          onClose={() => setSelectedTaskId(null)}
+          onClose={closeTaskDetails}
         />
       )}
     </div>

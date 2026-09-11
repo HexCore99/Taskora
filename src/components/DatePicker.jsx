@@ -16,6 +16,7 @@ const DatePicker = memo(function DatePicker({
   taskId,
   dueDate: dueDateProp,
   onChange,
+  withinTaskDetails = false,
 }) {
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
@@ -122,6 +123,7 @@ const DatePicker = memo(function DatePicker({
 
         <Popover.Portal>
           <Popover.Content
+            data-task-details-popup={withinTaskDetails || undefined}
             align="start"
             sideOffset={5}
             onPointerDown={(event) => event.stopPropagation()}

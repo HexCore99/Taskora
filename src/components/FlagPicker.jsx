@@ -32,6 +32,7 @@ const Flag = memo(function Flag({
   taskPriority,
   onChange,
   showLabel = false,
+  withinTaskDetails = false,
 }) {
   const setPriorityInStore = useTaskStore((state) => state.setPriority);
   const selectedPriority = String(taskPriority ?? 4);
@@ -64,6 +65,7 @@ const Flag = memo(function Flag({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
+        data-task-details-popup={withinTaskDetails || undefined}
         align="start"
         onPointerDown={(event) => event.stopPropagation()}
         className="w-36 min-w-36 bg-popover p-1"

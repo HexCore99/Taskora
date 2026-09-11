@@ -89,7 +89,7 @@ export default function Task({
 
     if (interactiveTarget) return;
 
-    onOpenDetails?.(task.id);
+    onOpenDetails?.(task.id, event.currentTarget);
   }
 
   function handleCardKeyDown(event) {
@@ -97,7 +97,7 @@ export default function Task({
 
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      onOpenDetails?.(task.id);
+      onOpenDetails?.(task.id, event.currentTarget);
     }
   }
 
