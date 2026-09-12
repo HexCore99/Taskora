@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/sidebar";
 import { useBoardStore } from "@/stores/useBoardStore";
 import { useJustTaskStore } from "@/stores/useJustTaskStore";
+import { useProjectStore } from "@/stores/useProjectStore";
 import TrashConfirmDialog from "@/components/trash/TrashConfirmDialog";
+import { JustTaskMoveMenu } from "@/components/SidebarBoardMoveMenu";
 
 export function JustTasks() {
   const [isCreating, setIsCreating] = useState(false);
@@ -29,6 +31,7 @@ export function JustTasks() {
   const boardState = useBoardStore((state) => state.states);
   const setBoardState = useBoardStore((state) => state.set_state);
   const justTaskBoards = useJustTaskStore((state) => state.justTaskBoards);
+  const projects = useProjectStore((state) => state.projects);
   const isLoading = useJustTaskStore((state) => state.isLoading);
   const error = useJustTaskStore((state) => state.error);
   const loadJustTaskBoards = useJustTaskStore(
@@ -40,6 +43,10 @@ export function JustTasks() {
   const deleteJustTaskBoard = useJustTaskStore(
     (state) => state.deleteJustTaskBoard,
   );
+  const moveJustTaskBoardToProject = useJustTaskStore(
+    (state) => state.moveJustTaskBoardToProject,
+  );
+  const loadProjects = useProjectStore((state) => state.loadProjects);
   const clearError = useJustTaskStore((state) => state.clearError);
 
   useEffect(() => {
@@ -122,6 +129,32 @@ export function JustTasks() {
     }
   }
 
+  async function moveToProject(justTaskBoard, project) {
+    try {
+      const movedBoard = await moveJustTaskBoardToProject(
+        justTaskBoard.id,
+        project.id,
+      );
+      await Promise.all([loadJustTaskBoards(), loadProjects()]);
+
+      if (
+        boardState.type === "just-tasks" &&
+        Number(boardState.justTaskId) === Number(justTaskBoard.id)
+      ) {
+        setBoardState({
+          type: "board",
+          projectId: project.id,
+          boardId: movedBoard.id,
+          justTaskId: null,
+          title: movedBoard.name,
+          focusedTaskId: null,
+        });
+      }
+    } catch {
+      // The store exposes the backend error below the task list.
+    }
+  }
+
   return (
     <SidebarGroup className="pt-0 pb-4 group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>JustTasks</SidebarGroupLabel>
@@ -178,19 +211,24 @@ export function JustTasks() {
 
         {justTaskBoards.map((justTaskBoard) => (
           <SidebarMenuItem key={justTaskBoard.id}>
-            <SidebarMenuButton
-              type="button"
-              tooltip={justTaskBoard.name}
-              isActive={
-                boardState.type === "just-tasks" &&
-                Number(boardState.justTaskId) === Number(justTaskBoard.id)
-              }
-              className="h-8 px-2 data-[active=true]:bg-orange-50! data-[active=true]:text-orange-600! dark:data-[active=true]:bg-orange-950/40! dark:data-[active=true]:text-orange-300!"
-              onClick={() => openJustTaskBoard(justTaskBoard)}
+            <JustTaskMoveMenu
+              projects={projects}
+              onMove={(project) => moveToProject(justTaskBoard, project)}
             >
-              <ListTodoIcon className="text-muted-foreground" />
-              <span>{justTaskBoard.name}</span>
-            </SidebarMenuButton>
+              <SidebarMenuButton
+                type="button"
+                tooltip={justTaskBoard.name}
+                isActive={
+                  boardState.type === "just-tasks" &&
+                  Number(boardState.justTaskId) === Number(justTaskBoard.id)
+                }
+                className="h-8 px-2 data-[active=true]:bg-orange-50! data-[active=true]:text-orange-600! dark:data-[active=true]:bg-orange-950/40! dark:data-[active=true]:text-orange-300!"
+                onClick={() => openJustTaskBoard(justTaskBoard)}
+              >
+                <ListTodoIcon className="text-muted-foreground" />
+                <span>{justTaskBoard.name}</span>
+              </SidebarMenuButton>
+            </JustTaskMoveMenu>
 
             <SidebarMenuAction
               type="button"

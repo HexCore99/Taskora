@@ -117,6 +117,35 @@ export const useProjectStore = create((set) => ({
     }
   },
 
+  moveBoardToJustTasks: async (projectId, boardId) => {
+    set({ error: null });
+
+    try {
+      const movedBoard = await invoke("move_board_to_just_tasks", {
+        projectId,
+        boardId,
+      });
+
+      set((state) => ({
+        projects: state.projects.map((project) =>
+          Number(project.id) === Number(projectId)
+            ? {
+                ...project,
+                boards: project.boards.filter(
+                  (board) => Number(board.id) !== Number(boardId),
+                ),
+              }
+            : project,
+        ),
+      }));
+
+      return movedBoard;
+    } catch (error) {
+      set({ error: String(error) });
+      throw error;
+    }
+  },
+
   clearError: () => {
     set({ error: null });
   },

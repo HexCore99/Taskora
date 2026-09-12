@@ -1,4 +1,4 @@
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use serde::Serialize;
 
 use crate::db::get_connection;
@@ -367,4 +367,91 @@ pub fn delete_project(app: tauri::AppHandle, project_id: i64) -> Result<(), Stri
     tx.commit().map_err(|err| err.to_string())?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn move_just_task_board_to_project(
+    app: tauri::AppHandle,
+    just_task_id: i64,
+    project_id: i64,
+) -> Result<Board, String> {
+    let mut conn = get_connection(&app)?;
+    let tx = conn.transaction().map_err(|err| err.to_string())?;
+
+    let name: Option<String> = tx
+        .query_row(
+            "SELECT name FROM just_task_boards WHERE id = ? AND in_trash = 0",
+            params![just_task_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|err| err.to_string())?;
+    let name = name.ok_or_else(|| "JustTask does not exist".to_string())?;
+
+    let project_exists: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ? AND in_trash = 0)",
+            params![project_id],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+    if !project_exists {
+        return Err("Project does not exist".to_string());
+    }
+
+    let name_exists: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM boards WHERE project_id = ? AND name = ?)",
+            params![project_id, name],
+            |row| row.get(0),
+    )
+    .map_err(|err| err.to_string())?;
+    if name_exists {
+        return Err(format!(
+            "A board named \"{name}\" already exists in this project"
+        ));
+    }
+
+    let position: i32 = tx
+        .query_row(
+            "SELECT COALESCE(MAX(position), -1) + 1
+             FROM boards
+             WHERE project_id = ?
+               AND in_trash = 0",
+            params![project_id],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+    let id = chrono::Utc::now().timestamp_millis();
+
+    tx.execute(
+        "INSERT INTO boards (id, project_id, name, position) VALUES (?, ?, ?, ?)",
+        params![id, project_id, name, position],
+    )
+    .map_err(|err| err.to_string())?;
+
+    tx.execute(
+        "UPDATE tasks
+         SET board_id = ?,
+             just_task = 0,
+             just_task_id = NULL
+         WHERE just_task_id = ?",
+        params![id, just_task_id],
+    )
+    .map_err(|err| err.to_string())?;
+
+    tx.execute(
+        "DELETE FROM just_task_boards WHERE id = ?",
+        params![just_task_id],
+    )
+    .map_err(|err| err.to_string())?;
+
+    tx.commit().map_err(|err| err.to_string())?;
+
+    Ok(Board {
+        id,
+        project_id,
+        name,
+        position,
+    })
 }
