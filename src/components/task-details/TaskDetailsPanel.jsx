@@ -6,10 +6,15 @@ import TaskNotes from "./TaskNotes";
 import TaskProperties from "./TaskProperties";
 import { useTaskStore } from "@/stores/useTaskStore";
 import { useSortingStore } from "@/stores/useSortingStore";
+import { useProjectStore } from "@/stores/useProjectStore";
+import { useJustTaskStore } from "@/stores/useJustTaskStore";
 
 function createDraft(task) {
   return {
     name: task.name ?? "",
+    board_id: task.board_id ?? null,
+    just_task: Boolean(task.just_task),
+    just_task_id: task.just_task_id ?? null,
     status: task.status ?? "todo",
     due_date: task.due_date ?? null,
     priority: Number(task.priority ?? 4),
@@ -31,6 +36,7 @@ export default function TaskDetailsPanel({
   onClose,
 }) {
   const panelRef = useRef(null);
+  const propertyPopupOpenRef = useRef(false);
   const [draft, setDraft] = useState(() => createDraft(task));
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -40,11 +46,14 @@ export default function TaskDetailsPanel({
   const moveToTrash = useTaskStore((state) => state.moveToTrash);
   const sortOptions = useSortingStore((state) => state.sortOptions);
   const sortColumn = useSortingStore((state) => state.sortColumn);
+  const projects = useProjectStore((state) => state.projects);
+  const justTaskBoards = useJustTaskStore((state) => state.justTaskBoards);
 
   useEffect(() => {
     setDraft(createDraft(task));
     setIsDeleting(false);
     setIsSaving(false);
+    propertyPopupOpenRef.current = false;
   }, [task.id]);
 
   useEffect(() => {
@@ -105,6 +114,8 @@ export default function TaskDetailsPanel({
 
   useEffect(() => {
     function handleOutsidePointerDown(event) {
+      if (propertyPopupOpenRef.current) return;
+
       const isPanelPopup =
         event.target instanceof Element &&
         event.target.closest("[data-task-details-popup]");
@@ -201,6 +212,11 @@ export default function TaskDetailsPanel({
           <TaskProperties
             taskId={task.id}
             draft={draft}
+            projects={projects}
+            justTaskBoards={justTaskBoards}
+            onPopupOpenChange={(open) => {
+              propertyPopupOpenRef.current = open;
+            }}
             onChange={updateDraft}
           />
 

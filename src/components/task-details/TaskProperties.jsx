@@ -1,5 +1,6 @@
 import DatePicker from "@/components/DatePicker";
 import FlagPicker from "@/components/FlagPicker";
+import ProjectManagement from "./ProjectManagement";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,12 +25,12 @@ function StatusIndicator({ color }) {
   );
 }
 
-function StatusPicker({ value, onValueChange }) {
+function StatusPicker({ value, onValueChange, onOpenChange }) {
   const selectedStatus =
     STATUS_OPTIONS.find((option) => option.value === value) ?? STATUS_OPTIONS[0];
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -74,15 +75,37 @@ function PropertyRow({ label, children }) {
   );
 }
 
-export default function TaskProperties({ taskId, draft, onChange }) {
+export default function TaskProperties({
+  taskId,
+  draft,
+  projects = [],
+  justTaskBoards = [],
+  onPopupOpenChange,
+  onChange,
+}) {
   return (
     <section
       aria-label="Task properties"
       className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
     >
+      <PropertyRow label="Project">
+        <ProjectManagement
+          destination={draft}
+          projects={projects}
+          justTaskBoards={justTaskBoards}
+          onOpenChange={onPopupOpenChange}
+          onChange={(destination) => {
+            onChange("board_id", destination.board_id);
+            onChange("just_task", destination.just_task);
+            onChange("just_task_id", destination.just_task_id);
+          }}
+        />
+      </PropertyRow>
+
       <PropertyRow label="Status">
         <StatusPicker
           value={draft.status}
+          onOpenChange={onPopupOpenChange}
           onValueChange={(status) => onChange("status", status)}
         />
       </PropertyRow>
@@ -92,6 +115,7 @@ export default function TaskProperties({ taskId, draft, onChange }) {
           taskId={taskId}
           dueDate={draft.due_date}
           withinTaskDetails
+          onOpenChange={onPopupOpenChange}
           onChange={(_taskId, dueDate) => onChange("due_date", dueDate)}
         />
       </PropertyRow>
@@ -102,6 +126,7 @@ export default function TaskProperties({ taskId, draft, onChange }) {
           taskPriority={draft.priority}
           withinTaskDetails
           showLabel
+          onOpenChange={onPopupOpenChange}
           onChange={(priority) => onChange("priority", priority)}
         />
       </PropertyRow>

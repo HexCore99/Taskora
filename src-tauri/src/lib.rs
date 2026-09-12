@@ -33,6 +33,7 @@ pub fn run() {
             tasks::get_upcoming_tasks,
             tasks::get_trash_tasks,
             tasks::create_task,
+            tasks::set_task_location,
             tasks::move_to_trash,
             tasks::restore_from_trash,
             tasks::delete_from_trash,

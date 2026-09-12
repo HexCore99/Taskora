@@ -17,6 +17,7 @@ const DatePicker = memo(function DatePicker({
   dueDate: dueDateProp,
   onChange,
   withinTaskDetails = false,
+  onOpenChange,
 }) {
   const today = startOfDay(new Date());
   const tomorrow = addDays(today, 1);
@@ -39,6 +40,11 @@ const DatePicker = memo(function DatePicker({
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
+
+  function handleOpenChange(nextOpen) {
+    setOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  }
 
   const calendarDays = useMemo(
     () => getCalendarDays(visibleMonth),
@@ -78,12 +84,12 @@ const DatePicker = memo(function DatePicker({
     setVisibleMonth(
       new Date(clickedDate.getFullYear(), clickedDate.getMonth(), 1),
     );
-    setOpen(false);
+    handleOpenChange(false);
   }
 
   async function clearDate() {
     await onChange(taskId, null);
-    setOpen(false);
+    handleOpenChange(false);
   }
 
   function changeMonth(amount) {
@@ -103,7 +109,7 @@ const DatePicker = memo(function DatePicker({
 
   return (
     <>
-      <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Root open={open} onOpenChange={handleOpenChange}>
         <Popover.Trigger asChild>
           <button
             type="button"

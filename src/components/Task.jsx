@@ -85,7 +85,7 @@ export default function Task({
     const interactiveTarget =
       event.target instanceof Element &&
       event.target.closest(
-        "button, input, textarea, select, a, [role='menuitem'], [role='option']",
+        "button, input, textarea, select, a, [role='menuitem'], [role='menuitemradio'], [role='option']",
       );
 
     if (interactiveTarget) return;

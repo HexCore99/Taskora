@@ -1,5 +1,5 @@
 import { PlusIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function createNote(text) {
   const generatedId =
@@ -47,8 +47,24 @@ function NoteItem({ note, onToggle, onTextChange, onRemove }) {
 }
 
 export default function TaskNotes({ notes, onChange }) {
+  const newNoteInputRef = useRef(null);
   const [isAdding, setIsAdding] = useState(false);
   const [newNote, setNewNote] = useState("");
+
+  useEffect(() => {
+    if (!isAdding) return undefined;
+
+    function handleOutsideClick(event) {
+      if (newNoteInputRef.current?.contains(event.target)) return;
+
+      setNewNote("");
+      setIsAdding(false);
+    }
+
+    document.addEventListener("click", handleOutsideClick);
+    return () =>
+      document.removeEventListener("click", handleOutsideClick);
+  }, [isAdding]);
 
   function addNote() {
     const text = newNote.trim();
@@ -77,8 +93,17 @@ export default function TaskNotes({ notes, onChange }) {
     onChange(notes.filter((note) => note.id !== noteId));
   }
 
+  function handleNotesClick(event) {
+    event.stopPropagation();
+
+    if (isAdding && !newNoteInputRef.current?.contains(event.target)) {
+      setNewNote("");
+      setIsAdding(false);
+    }
+  }
+
   return (
-    <section>
+    <section onClick={handleNotesClick}>
       <h3 className="mb-2 text-sm font-medium text-foreground">Notes</h3>
 
       <div className="rounded-xl border border-border bg-card p-4">
@@ -101,6 +126,7 @@ export default function TaskNotes({ notes, onChange }) {
         {isAdding && (
           <div className="mt-3 flex items-center gap-2">
             <input
+              ref={newNoteInputRef}
               autoFocus
               type="text"
               value={newNote}
