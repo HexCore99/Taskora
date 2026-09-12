@@ -33,6 +33,7 @@ const Flag = memo(function Flag({
   onChange,
   showLabel = false,
   withinTaskDetails = false,
+  onOpenChange,
 }) {
   const setPriorityInStore = useTaskStore((state) => state.setPriority);
   const selectedPriority = String(taskPriority ?? 4);
@@ -48,13 +49,14 @@ const Flag = memo(function Flag({
     setPriorityInStore(taskId, p);
   }
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           title={priority.label}
           aria-label={`Set priority. Current: ${priority.label}`}
           onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
           className={
             "inline-flex h-7 items-center justify-center gap-2 rounded px-1.5 transition-colors hover:bg-muted " +
             (showLabel ? "text-sm text-foreground" : "w-7")

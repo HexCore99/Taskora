@@ -97,6 +97,22 @@ export const useTaskStore = create((set, get) => ({
 
   saveTaskDetails: async (originalTask, draft) => {
     const taskId = Number(originalTask.id);
+    const nextBoardId =
+      draft.board_id == null ? null : Number(draft.board_id);
+    const originalBoardId =
+      originalTask.board_id == null ? null : Number(originalTask.board_id);
+    const nextJustTaskId =
+      draft.just_task_id == null ? null : Number(draft.just_task_id);
+    const originalJustTaskId =
+      originalTask.just_task_id == null
+        ? null
+        : Number(originalTask.just_task_id);
+    const nextJustTask = Boolean(draft.just_task);
+    const originalJustTask = Boolean(originalTask.just_task);
+    const locationChanged =
+      nextBoardId !== originalBoardId ||
+      nextJustTask !== originalJustTask ||
+      nextJustTaskId !== originalJustTaskId;
     const description = draft.description?.trim() || null;
     const notes = (draft.notes ?? [])
       .map((note) => ({
@@ -106,12 +122,11 @@ export const useTaskStore = create((set, get) => ({
       }))
       .filter((note) => note.text);
 
-    await Promise.all([
+    const updates = [
       invoke("update_task_name", {
         id: taskId,
         updatedTask: draft.name,
       }),
-      invoke("update_task_status", { id: taskId, status: draft.status }),
       invoke("set_priority", {
         id: taskId,
         priority: Number(draft.priority),
@@ -121,7 +136,24 @@ export const useTaskStore = create((set, get) => ({
         dueDate: draft.due_date ?? null,
       }),
       invoke("set_description", { id: taskId, description }),
-    ]);
+    ];
+
+    if (locationChanged) {
+      updates.push(
+        invoke("set_task_location", {
+          id: taskId,
+          boardId: nextBoardId,
+          justTaskId: nextJustTaskId,
+          status: draft.status,
+        }),
+      );
+    } else {
+      updates.push(
+        invoke("update_task_status", { id: taskId, status: draft.status }),
+      );
+    }
+
+    await Promise.all(updates);
 
     const originalNotes = new Map(
       (originalTask.notes ?? []).map((note) => [String(note.id), note]),
@@ -182,25 +214,37 @@ export const useTaskStore = create((set, get) => ({
       if (typeof note.id === "number") return note;
       return createdNotes[createdNoteIndex++];
     });
-    const changes = { ...draft, description, notes: savedNotes };
+    const changes = {
+      ...draft,
+      board_id: nextBoardId,
+      just_task: nextJustTask,
+      just_task_id: nextJustTaskId,
+      description,
+      notes: savedNotes,
+    };
     const currentTasks = get().tasks;
-    const updatedTasks =
-      draft.status === originalTask.status
-        ? {
-            ...currentTasks,
-            [draft.status]: currentTasks[draft.status].map((task) =>
-              Number(task.id) === taskId
-                ? { ...task, ...changes }
-                : task,
-            ),
-          }
-        : groupTasksByStatus(
-            flattenTasks(currentTasks).map((task) =>
-              Number(task.id) === taskId ? { ...task, ...changes } : task,
-            ),
-          );
+    const currentTaskView = get().currentTaskView;
+    const currentBoardId = get().currentBoardId;
+    const currentJustTaskId = get().currentJustTaskId;
+    const currentIncludeAll = get().currentIncludeAll;
+    const movedOutsideCurrentView =
+      locationChanged &&
+      ((currentTaskView === "board" &&
+        !currentIncludeAll &&
+        (nextBoardId !== currentBoardId || nextJustTask)) ||
+        (currentTaskView === "just-tasks" &&
+          (!nextJustTask || nextJustTaskId !== currentJustTaskId)));
+    const updatedTaskList = flattenTasks(currentTasks)
+      .map((task) =>
+        Number(task.id) === taskId ? { ...task, ...changes } : task,
+      )
+      .filter(
+        (task) =>
+          Number(task.id) !== taskId || !movedOutsideCurrentView,
+      );
+    const updatedTasks = groupTasksByStatus(updatedTaskList);
 
-    if (draft.status !== originalTask.status) {
+    if (draft.status !== originalTask.status && !locationChanged) {
       await invoke("update_position", {
         tasks: flattenTasks(updatedTasks),
         boardId: get().currentBoardId,

@@ -482,6 +482,160 @@ pub fn update_position(
 }
 
 #[tauri::command]
+pub fn set_task_location(
+    app: tauri::AppHandle,
+    id: i64,
+    board_id: Option<i64>,
+    just_task_id: Option<i64>,
+    status: String,
+) -> Result<(), String> {
+    if !matches!(status.as_str(), "todo" | "in-progress" | "completed") {
+        return Err("Invalid task status".to_string());
+    }
+
+    if board_id.is_some() && just_task_id.is_some() {
+        return Err("A task can only have one destination".to_string());
+    }
+
+    let mut conn = get_connection(&app)?;
+    let tx = conn.transaction().map_err(|err| err.to_string())?;
+
+    let task_location: Option<(Option<i64>, bool, Option<i64>, String, i32)> = tx
+        .query_row(
+            "SELECT board_id, just_task, just_task_id, status, position
+             FROM tasks
+             WHERE id = ?
+               AND in_trash = 0",
+            params![id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|err| err.to_string())?;
+
+    let (current_board_id, current_just_task, current_just_task_id, current_status, position) =
+        task_location.ok_or_else(|| "Task does not exist".to_string())?;
+
+    if let Some(selected_board_id) = board_id {
+        let board_exists: bool = tx
+            .query_row(
+                "SELECT EXISTS(
+                    SELECT 1
+                    FROM boards
+                    JOIN projects ON projects.id = boards.project_id
+                    WHERE boards.id = ?
+                      AND boards.in_trash = 0
+                      AND projects.in_trash = 0
+                )",
+                params![selected_board_id],
+                |row| row.get(0),
+            )
+            .map_err(|err| err.to_string())?;
+
+        if !board_exists {
+            return Err("The selected board does not exist".to_string());
+        }
+    }
+
+    if let Some(selected_just_task_id) = just_task_id {
+        let just_task_board_exists: bool = tx
+            .query_row(
+                "SELECT EXISTS(
+                    SELECT 1
+                    FROM just_task_boards
+                    WHERE id = ?
+                      AND in_trash = 0
+                )",
+                params![selected_just_task_id],
+                |row| row.get(0),
+            )
+            .map_err(|err| err.to_string())?;
+
+        if !just_task_board_exists {
+            return Err("The selected JustTask board does not exist".to_string());
+        }
+    }
+
+    let destination_is_just_task = just_task_id.is_some();
+    if current_board_id == board_id
+        && current_just_task_id == just_task_id
+        && current_just_task == destination_is_just_task
+        && current_status == status
+    {
+        tx.commit().map_err(|err| err.to_string())?;
+        return Ok(());
+    }
+
+    tx.execute(
+        "UPDATE tasks
+         SET position = position - 1
+        WHERE board_id IS ?
+           AND just_task = ?
+           AND just_task_id IS ?
+           AND status = ?
+           AND position > ?
+           AND id != ?
+           AND in_trash = 0",
+        params![
+            current_board_id,
+            current_just_task,
+            current_just_task_id,
+            current_status,
+            position,
+            id
+        ],
+    )
+    .map_err(|err| err.to_string())?;
+
+    tx.execute(
+        "UPDATE tasks
+         SET position = position + 1
+        WHERE board_id IS ?
+           AND just_task = ?
+           AND just_task_id IS ?
+           AND status = ?
+           AND in_trash = 0",
+        params![
+            board_id,
+            destination_is_just_task,
+            just_task_id,
+            status
+        ],
+    )
+    .map_err(|err| err.to_string())?;
+
+    tx.execute(
+        "UPDATE tasks
+         SET board_id = ?,
+             just_task = ?,
+             just_task_id = ?,
+             status = ?,
+             position = 0
+         WHERE id = ?
+           AND in_trash = 0",
+        params![
+            board_id,
+            destination_is_just_task,
+            just_task_id,
+            status,
+            id
+        ],
+    )
+    .map_err(|err| err.to_string())?;
+
+    tx.commit().map_err(|err| err.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn update_task_status(app: tauri::AppHandle, id: i64, status: String) -> Result<(), String> {
     let conn = get_connection(&app)?;
 

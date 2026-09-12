@@ -54,6 +54,7 @@ function getTaskBreadcrumb(task, projects, justTaskBoards) {
 
 export default function TaskBoard({ defaultTaskPriority = 4 }) {
   const [detailsAnchor, setDetailsAnchor] = useState(null);
+  const [detailsPanelSide, setDetailsPanelSide] = useState("right");
   const boardGridRef = useRef(null);
 
   const tasks = useTaskStore((state) => state.tasks);
@@ -79,6 +80,18 @@ export default function TaskBoard({ defaultTaskPriority = 4 }) {
 
   function setSelectedTaskId(taskId, anchorElement = null) {
     setDetailsAnchor(taskId == null ? null : anchorElement);
+
+    if (taskId == null || !anchorElement) {
+      setDetailsPanelSide("right");
+    } else {
+      const anchorRect = anchorElement.getBoundingClientRect();
+      const panelWidth = Math.min(400, window.innerWidth - 16);
+      const panelFitsOnRight =
+        anchorRect.right + 12 + panelWidth <= window.innerWidth - 8;
+
+      setDetailsPanelSide(panelFitsOnRight ? "right" : "left");
+    }
+
     setBoardState({
       ...boardState,
       focusedTaskId: taskId ?? null,
@@ -265,6 +278,7 @@ export default function TaskBoard({ defaultTaskPriority = 4 }) {
                         key={task.id}
                         task={task}
                         isSelected={Number(selectedTaskId) === Number(task.id)}
+                        detailsPanelSide={detailsPanelSide}
                         onOpenDetails={setSelectedTaskId}
                         onDelete={handleDeleteTask}
                       />
