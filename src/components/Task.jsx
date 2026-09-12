@@ -135,6 +135,7 @@ export default function Task({
       data-selected={isSelected}
       className={cardClassName}
       onClick={handleCardClick}
+      onContextMenu={(event) => event.preventDefault()}
       onKeyDown={handleCardKeyDown}
     >
       <div className="flex items-center justify-between gap-3">
