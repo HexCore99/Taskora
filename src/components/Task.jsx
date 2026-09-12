@@ -11,6 +11,7 @@ export default function Task({
   task,
   onDelete,
   isSelected = false,
+  detailsPanelSide = "right",
   onOpenDetails,
 }) {
   const changeTaskStatus = useTaskStore((state) => state.changeTaskStatus);
@@ -104,20 +105,34 @@ export default function Task({
   const cardClassName = [
     taskColor[task.status] ?? taskColor.todo,
     "task-card h-fit w-full min-w-[300px] cursor-pointer rounded-lg border px-3 py-3 shadow-sm transition-shadow hover:shadow-lg",
-    isSelected
-      ? "ring-2 ring-[var(--task-card-accent)] ring-offset-2 ring-offset-background"
-      : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const cardStyle = {
+    ...style,
+    translate: isSelected
+      ? `${detailsPanelSide === "left" ? "-6px" : "6px"} 0`
+      : "0 0",
+    scale: isSelected ? "1.015" : "1",
+    transition: [
+      style.transition,
+      "translate 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+      "scale 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+      "box-shadow 180ms ease",
+    ]
+      .filter(Boolean)
+      .join(", "),
+  };
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={cardStyle}
       role="button"
       tabIndex={0}
       aria-selected={isSelected}
+      data-selected={isSelected}
       className={cardClassName}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
