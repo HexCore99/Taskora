@@ -53,5 +53,27 @@ export const useJustTaskStore = create((set) => ({
     }
   },
 
+  moveJustTaskBoardToProject: async (justTaskId, projectId) => {
+    set({ error: null });
+
+    try {
+      const movedBoard = await invoke("move_just_task_board_to_project", {
+        justTaskId,
+        projectId,
+      });
+
+      set((state) => ({
+        justTaskBoards: state.justTaskBoards.filter(
+          (board) => Number(board.id) !== Number(justTaskId),
+        ),
+      }));
+
+      return movedBoard;
+    } catch (error) {
+      set({ error: String(error) });
+      throw error;
+    }
+  },
+
   clearError: () => set({ error: null }),
 }));

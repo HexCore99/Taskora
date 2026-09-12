@@ -24,7 +24,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useProjectStore } from "@/stores/useProjectStore";
 import { useBoardStore } from "@/stores/useBoardStore";
+import { useJustTaskStore } from "@/stores/useJustTaskStore";
 import TrashConfirmDialog from "@/components/trash/TrashConfirmDialog";
+import { ProjectBoardMoveMenu } from "@/components/SidebarBoardMoveMenu";
 
 export function NavProjects({ navOpenItems = {}, onNavItemOpenChange }) {
   const projects = useProjectStore((state) => state.projects);
@@ -34,6 +36,13 @@ export function NavProjects({ navOpenItems = {}, onNavItemOpenChange }) {
   const deleteProject = useProjectStore((state) => state.deleteProject);
   const deleteBoard = useProjectStore((state) => state.deleteBoard);
   const clearError = useProjectStore((state) => state.clearError);
+  const moveBoardToJustTasks = useProjectStore(
+    (state) => state.moveBoardToJustTasks,
+  );
+  const loadProjects = useProjectStore((state) => state.loadProjects);
+  const loadJustTaskBoards = useJustTaskStore(
+    (state) => state.loadJustTaskBoards,
+  );
   const boardState = useBoardStore((state) => state.states);
   const setBoardState = useBoardStore((state) => state.set_state);
 
@@ -167,6 +176,29 @@ export function NavProjects({ navOpenItems = {}, onNavItemOpenChange }) {
     }
   }
 
+  async function moveToJustTasks(project, board) {
+    try {
+      const movedBoard = await moveBoardToJustTasks(project.id, board.id);
+      await Promise.all([loadProjects(), loadJustTaskBoards()]);
+
+      if (
+        boardState.type === "board" &&
+        Number(boardState.boardId) === Number(board.id)
+      ) {
+        setBoardState({
+          type: "just-tasks",
+          projectId: null,
+          boardId: null,
+          justTaskId: movedBoard.id,
+          title: movedBoard.name,
+          focusedTaskId: null,
+        });
+      }
+    } catch {
+      // The project store exposes the backend error below the project list.
+    }
+  }
+
   const deletingProject = pendingDelete?.type === "project";
   const deleteTargetName = deletingProject
     ? pendingDelete?.project.name
@@ -262,19 +294,23 @@ export function NavProjects({ navOpenItems = {}, onNavItemOpenChange }) {
                       key={board.id}
                       className="group/board"
                     >
-                      <SidebarMenuSubButton
-                        href="#"
-                        className="pr-7 data-[active=true]:bg-orange-50! data-[active=true]:text-orange-600! data-[active=true]:hover:bg-orange-50! data-[active=true]:hover:text-orange-600! dark:data-[active=true]:bg-orange-950/40! dark:data-[active=true]:text-orange-300! dark:data-[active=true]:hover:bg-orange-950/40! dark:data-[active=true]:hover:text-orange-300!"
-                        isActive={
-                          boardState.type === "board" &&
-                          boardState.boardId === board.id
-                        }
-                        onClick={(event) =>
-                          handleBoardClick(event, project, board)
-                        }
+                      <ProjectBoardMoveMenu
+                        onMove={() => moveToJustTasks(project, board)}
                       >
-                        <span>{board.name}</span>
-                      </SidebarMenuSubButton>
+                        <SidebarMenuSubButton
+                          href="#"
+                          className="pr-7 data-[active=true]:bg-orange-50! data-[active=true]:text-orange-600! data-[active=true]:hover:bg-orange-50! data-[active=true]:hover:text-orange-600! dark:data-[active=true]:bg-orange-950/40! dark:data-[active=true]:text-orange-300! dark:data-[active=true]:hover:bg-orange-950/40! dark:data-[active=true]:hover:text-orange-300!"
+                          isActive={
+                            boardState.type === "board" &&
+                            boardState.boardId === board.id
+                          }
+                          onClick={(event) =>
+                            handleBoardClick(event, project, board)
+                          }
+                        >
+                          <span>{board.name}</span>
+                        </SidebarMenuSubButton>
+                      </ProjectBoardMoveMenu>
 
                       <button
                         type="button"
